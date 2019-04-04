@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class FreebitBot:
+    title = 'FreeBitco.in - Bitcoin, Bitcoin Price, Free Bitcoin Wallet, Faucet, Lottery and Dice!'
 
     def __init__(self):
         logger.info('Initializing FreebitBot.')
@@ -90,26 +91,30 @@ class FreebitBot:
                     '#myModal22.reveal-modal.open > a.close-reveal-modal'
                 ).click()
                 removed = True
-            except ElementNotInteractableException:
+            except NoSuchElementException:
                 logger.error('Could not click the element, retrying.')
                 sleep(2)
             except Exception as e:
                 logger.error(f"Unexpected error, retrying.\n"
                              f"The exception was: {e}")
+                sleep(2)
             self.deny_multiply_btc(removed)
         else:
             logger.info('Removed the pop up')
 
     def claim_btc(self):
         logger.info('Trying to claim the btc.')
-
-        clicked = self.driver.title == 'FreeBitco.in - Win free bitcoins every hour!'
-        while not clicked:
-            self.driver.find_element_by_id('free_play_form_button').click()
-            clicked = self.driver.title == 'FreeBitco.in - Win free bitcoins every hour!'
-            sleep(2)
-        logger.info('BTC Claimed!')
-        self.deny_multiply_btc()
+        able_to_click = self.driver.title == self.title
+        if able_to_click:
+            while able_to_click:
+                self.driver.find_element_by_id('free_play_form_button').click()
+                sleep(2)
+                able_to_click = self.driver.title == self.title
+            logger.info('BTC Claimed!')
+            self.deny_multiply_btc()
+        else:
+            logger.info('Trying again in a minute.')
+            sleep(60)
 
     def main(self):
         logger.info('Initializing main loop.')
