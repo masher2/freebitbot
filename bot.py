@@ -1,3 +1,5 @@
+import logging
+import logging.config
 from time import sleep
 from selenium import webdriver
 from selenium.common.exceptions import (
@@ -6,9 +8,35 @@ from selenium.common.exceptions import (
 )
 
 
+logging.config.dictConfig({
+    'version': 1,
+    'formatters': {
+        'console': {
+            'format': '[%(asctime)s] %(levelname)s: %(message)s',
+            'datefmt': '%H:%M:%S'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'level': 'INFO',
+            'formatter': 'console',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    }
+})
+logger = logging.getLogger(__name__)
+
+
 class FreebitBot:
 
     def __init__(self):
+        logger.info('Initializing FreebitBot.')
         self.driver = webdriver.Firefox()
         self.driver.get('https://freebitco.in/')
 
@@ -25,33 +53,50 @@ class FreebitBot:
         # Wait for me to login
         sleep(15)
 
-    def deny_notifications(self):
-        removed = False
-        try:
-            self.driver\
-                .find_element_by_css_selector('div.pushpad_deny_button')\
-                .click()
-            removed = True
-        except ElementNotInteractableException:
-            if not removed:
-                self.deny_notifications()
+    def deny_notifications(self, previous_call=False):
+        if not previous_call:
+            logger.info('Looking for the notification pop up.')
+            removed = False
+            try:
+                self.driver\
+                    .find_element_by_css_selector('div.pushpad_deny_button')\
+                    .click()
+                removed = True
+            except ElementNotInteractableException:
+                logger.error('Could not click the element, retrying.')
+            except Exception as e:
+                logger.error(f"Unexpected error, retrying.\n"
+                             f"The exception was: {e}")
+            self.deny_notifications(removed)
+        else:
+            logger.info('Removed the pop up')
 
-    def deny_multiply_btc(self):
-        removed = False
-        try:
-            self.driver.find_element_by_css_selector(
-                '#myModal22.reveal-modal.open > a.close-reveal-modal'
-            ).click()
-            removed = True
-        except ElementNotInteractableException:
-            if not removed:
-                self.deny_multiply_btc()
+    def deny_multiply_btc(self, previous_call=False):
+        if not previous_call:
+            logger.info('Looking for the multiply btc pop up.')
+            removed = False
+            try:
+                self.driver.find_element_by_css_selector(
+                    '#myModal22.reveal-modal.open > a.close-reveal-modal'
+                ).click()
+                removed = True
+            except ElementNotInteractableException:
+                logger.error('Could not click the element, retrying.')
+            except Exception as e:
+                logger.error(f"Unexpected error, retrying.\n"
+                             f"The exception was: {e}")
+            self.deny_multiply_btc(removed)
+        else:
+            logger.info('Removed the pop up')
 
     def claim_btc(self):
+        logger.info('Trying to claim the btc.')
         self.driver.find_element_by_id('free_play_form_button').click()
+        logger.info('BTC Claimed!')
         self.deny_multiply_btc()
 
     def main(self):
+        logger.info('Initializing main loop.')
         while True:
             try:
                 self.claim_btc()
@@ -60,6 +105,7 @@ class FreebitBot:
             except NoSuchElementException:
                 sleep(5)
             except ElementClickInterceptedException:
+                logger.info('Scrolling to bottom.')
                 self.driver.execute_script(
                     "window.scrollTo(0, document.body.scrollHeight);"
                 )
