@@ -43,6 +43,7 @@ class FreebitBot:
         self.deny_notifications()
 
         # Login
+        logger.info('Navigating to the loging screen.')
         self.driver\
             .find_element_by_class_name('login_menu_button')\
             .click()
@@ -50,8 +51,16 @@ class FreebitBot:
             .find_element_by_id('login_form_btc_address')\
             .send_keys('japbogado@gmail.com')
 
-        # Wait for me to login
-        sleep(15)
+        logger.info('Wating for the user to log in.')
+        self.wait_for_login()
+
+    def wait_for_login(self):
+        try:
+            self.driver.find_element_by_id('login_form_btc_address')
+            sleep(5)
+            self.wait_for_login()
+        except NoSuchElementException:
+            logger.info('Successfully logged')
 
     def deny_notifications(self, previous_call=False):
         if not previous_call:
@@ -64,6 +73,7 @@ class FreebitBot:
                 removed = True
             except ElementNotInteractableException:
                 logger.error('Could not click the element, retrying.')
+                sleep(2)
             except Exception as e:
                 logger.error(f"Unexpected error, retrying.\n"
                              f"The exception was: {e}")
@@ -82,6 +92,7 @@ class FreebitBot:
                 removed = True
             except ElementNotInteractableException:
                 logger.error('Could not click the element, retrying.')
+                sleep(2)
             except Exception as e:
                 logger.error(f"Unexpected error, retrying.\n"
                              f"The exception was: {e}")
@@ -91,7 +102,12 @@ class FreebitBot:
 
     def claim_btc(self):
         logger.info('Trying to claim the btc.')
-        self.driver.find_element_by_id('free_play_form_button').click()
+
+        clicked = self.driver.title == 'FreeBitco.in - Win free bitcoins every hour!'
+        while not clicked:
+            self.driver.find_element_by_id('free_play_form_button').click()
+            clicked = self.driver.title == 'FreeBitco.in - Win free bitcoins every hour!'
+            sleep(2)
         logger.info('BTC Claimed!')
         self.deny_multiply_btc()
 
