@@ -121,6 +121,7 @@ class FreebitBot:
         while True:
             try:
                 self.claim_btc()
+                bottom = False
             except ElementNotInteractableException:
                 sleep(5)
             except NoSuchElementException:
@@ -130,6 +131,9 @@ class FreebitBot:
                 self.driver.execute_script(
                     "window.scrollTo(0, document.body.scrollHeight);"
                 )
+                if bottom:
+                    self.deny_notifications()
+                bottom = True
 
 
 if __name__ == '__main__':
