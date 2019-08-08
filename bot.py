@@ -1,5 +1,7 @@
+#! /home/masher2/.venvs/freebitbot/bin/python
 import logging
 import logging.config
+import re
 from time import sleep
 from selenium import webdriver
 from selenium.common.exceptions import (
@@ -34,7 +36,6 @@ logger = logging.getLogger(__name__)
 
 
 class FreebitBot:
-    title = 'FreeBitco.in - Bitcoin, Bitcoin Price, Free Bitcoin Wallet, Faucet, Lottery and Dice!'
 
     def __init__(self):
         logger.info('Initializing FreebitBot.')
@@ -63,77 +64,62 @@ class FreebitBot:
         except NoSuchElementException:
             logger.info('Successfully logged')
 
-    def deny_notifications(self, previous_call=False):
-        if not previous_call:
-            logger.info('Looking for the notification pop up.')
-            removed = False
-            try:
-                self.driver\
-                    .find_element_by_css_selector('div.pushpad_deny_button')\
-                    .click()
-                removed = True
-            except ElementNotInteractableException:
-                logger.error('Could not click the element, retrying.')
-                sleep(2)
-            except Exception as e:
-                logger.error(f"Unexpected error, retrying.\n"
-                             f"The exception was: {e}")
-            self.deny_notifications(removed)
-        else:
+    def deny_notifications(self):
+        logger.info('Removing the notification popup')
+        try:
+            self.driver\
+                .find_element_by_css_selector('div.pushpad_deny_button')\
+                .click()
             logger.info('Removed the pop up')
-
-    def deny_multiply_btc(self, previous_call=False):
-        if not previous_call:
-            logger.info('Looking for the multiply btc pop up.')
-            removed = False
-            try:
-                self.driver.find_element_by_css_selector(
-                    '#myModal22.reveal-modal.open > a.close-reveal-modal'
-                ).click()
-                removed = True
-            except NoSuchElementException:
-                logger.error('Could not click the element, retrying.')
-                sleep(2)
-            except Exception as e:
-                logger.error(f"Unexpected error, retrying.\n"
-                             f"The exception was: {e}")
-                sleep(2)
-            self.deny_multiply_btc(removed)
-        else:
-            logger.info('Removed the pop up')
+        except ElementNotInteractableException:
+            logger.error('Could not remove the notification popup')
+        except Exception as e:
+            logger.error(f"Unexpected error, retrying.\nThe exception was: {e}")
 
     def claim_btc(self):
         logger.info('Trying to claim the btc.')
-        able_to_click = self.driver.title == self.title
-        if able_to_click:
-            while able_to_click:
-                self.driver.find_element_by_id('free_play_form_button').click()
-                sleep(2)
-                able_to_click = self.driver.title == self.title
-            logger.info('BTC Claimed!')
-            self.deny_multiply_btc()
-        else:
-            logger.info('Trying again in a minute.')
-            sleep(60)
+        self.driver.find_element_by_id('free_play_form_button').click()
+        sleep(5)
+        logger.info('BTC Claimed!')
 
-    def main(self):
-        logger.info('Initializing main loop.')
-        while True:
-            try:
-                self.claim_btc()
-                bottom = False
-            except ElementNotInteractableException:
-                sleep(5)
-            except NoSuchElementException:
-                sleep(5)
-            except ElementClickInterceptedException:
-                logger.info('Scrolling to bottom.')
+    def check(self):
+        """ Checks if can claim the BTC
+
+        Returns False if not ready to claim, True otherwise
+        """
+        try:
+            # No internet
+            if self.driver.title == 'Server Not Found':
+                self.driver.refresh()
+                return False
+
+            # Waiting
+            if re.search('^\d{1,2}m\:\d{1,2}s', self.driver.title):
+                return False
+
+            # Notification popup
+            if self.driver.find_element_by_css_selector('div.pushpad_deny_button').is_displayed():
+                self.deny_notifications()
+                return False
+
+            # Are we ready?
+            ready = self.driver.find_element_by_id('free_play_form_button').is_displayed()
+            if ready:
+                # Scrolling to bottom
                 self.driver.execute_script(
                     "window.scrollTo(0, document.body.scrollHeight);"
                 )
-                if bottom:
-                    self.deny_notifications()
-                bottom = True
+            return ready
+
+        except Exception:
+            return False
+
+    def main(self):
+        while True:
+            if self.check():
+                self.claim_btc()
+            else:
+                sleep(10)
 
 
 if __name__ == '__main__':
