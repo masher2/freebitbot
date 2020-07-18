@@ -77,10 +77,13 @@ class FreebitBot:
             logger.error(f"Unexpected error, retrying.\nThe exception was: {e}")
 
     def claim_btc(self):
-        logger.info('Trying to claim the btc.')
-        self.driver.find_element_by_id('free_play_form_button').click()
-        sleep(5)
-        logger.info('BTC Claimed!')
+        try:
+            logger.info('Trying to claim the btc.')
+            self.driver.find_element_by_id('free_play_form_button').click()
+            sleep(5)
+            logger.info('BTC Claimed!')
+        except Exception:
+            sleep(5)
 
     def check(self):
         """ Checks if can claim the BTC
