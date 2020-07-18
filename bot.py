@@ -93,6 +93,11 @@ class FreebitBot:
                 self.driver.refresh()
                 return False
 
+            # Stopped clock
+            if re.search('^0m\:0s', self.driver.title):
+                self.driver.refresh()
+                return False
+
             # Waiting
             if re.search('^\d{1,2}m\:\d{1,2}s', self.driver.title):
                 return False
